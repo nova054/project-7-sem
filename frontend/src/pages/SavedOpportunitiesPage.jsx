@@ -7,6 +7,7 @@ import ErrorMessage from '../components/ErrorMessage';
 import { useSavedOpportunities } from '../hooks/useSavedOpportunities';
 import { useAuth } from '../hooks/useAuth.jsx';
 import apiService from '../services/api';
+import Modal from '../components/Modal';
 
 const SavedOpportunitiesPage = () => {
   const { isAuthenticated } = useAuth();
@@ -15,6 +16,7 @@ const SavedOpportunitiesPage = () => {
   const [savedOpportunityDetails, setSavedOpportunityDetails] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [modal, setModal] = useState({ open: false, type: 'info', title: '', message: '', onClose: null });
 
   const fetchSavedOpportunityDetails = async () => {
     try {
@@ -38,15 +40,15 @@ const SavedOpportunitiesPage = () => {
 
   const handleApply = async (opportunityId) => {
     if (!isAuthenticated) {
-      alert('Please log in to apply for opportunities');
+      setModal({ open: true, type: 'info', title: 'Sign in required', message: 'Please log in to apply for opportunities', onClose: () => setModal(m => ({ ...m, open: false })) });
       return;
     }
 
     try {
       await apiService.applyToOpportunity(opportunityId);
-      alert('Application submitted successfully!');
+      setModal({ open: true, type: 'success', title: 'Application submitted', message: 'Your application was submitted successfully.', onClose: () => setModal(m => ({ ...m, open: false })) });
     } catch (error) {
-      alert('Failed to submit application. Please try again.');
+      setModal({ open: true, type: 'error', title: 'Submission failed', message: 'Failed to submit application. Please try again.', onClose: () => setModal(m => ({ ...m, open: false })) });
     }
   };
 
@@ -56,7 +58,7 @@ const SavedOpportunitiesPage = () => {
       // Refresh the saved opportunities list
       fetchSavedOpportunityDetails();
     } catch (error) {
-      alert('Failed to remove from saved. Please try again.');
+      setModal({ open: true, type: 'error', title: 'Action failed', message: 'Failed to remove from saved. Please try again.', onClose: () => setModal(m => ({ ...m, open: false })) });
     }
   };
 
@@ -80,6 +82,7 @@ const SavedOpportunitiesPage = () => {
   }
 
   return (
+    <>
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
@@ -166,6 +169,15 @@ const SavedOpportunitiesPage = () => {
         )}
       </div>
     </div>
+    <Modal
+      isOpen={modal.open}
+      onClose={modal.onClose || (() => setModal(m => ({ ...m, open: false })))}
+      title={modal.title}
+      message={modal.message}
+      type={modal.type}
+      primaryAction={{ label: 'OK', onClick: modal.onClose || (() => setModal(m => ({ ...m, open: false }))) }}
+    />
+    </>
   );
 };
 

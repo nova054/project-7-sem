@@ -41,9 +41,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const response = await apiService.login(email, password);
-      // After receiving token, fetch full current user so we have interests/phone/location
-      const current = await apiService.getCurrentUser();
-      setUser(current.user);
+      setUser(response.user);
       setIsAuthenticated(true);
       return response;
     } catch (error) {
@@ -54,44 +52,11 @@ export const AuthProvider = ({ children }) => {
   const register = async (name, email, password, role = 'volunteer', interests = undefined) => {
     try {
       const response = await apiService.register(name, email, password, role, interests);
-      console.log('Register response:', response);
-      
-      if (response.message === 'User registered successfully') {
-        return response;
-      }
-      
-      if (response.error) {
-        throw new Error(response.error);
-      }
-      
-      if (response.message && response.message !== 'User registered successfully') {
-        throw new Error(response.message);
-      }
-      
+      setUser(response.user);
+      setIsAuthenticated(true);
       return response;
     } catch (error) {
-      console.error('Register error:', error);
-      if (error.message.includes('Server error')) {
-        throw new Error('Registration completed but there was an issue with email verification. You can still sign in.');
-      }
       throw error;
-    }
-  };
-
-  const updateProfile = async (profileData) => {
-    const response = await apiService.updateProfile(profileData);
-    if (response && response.user) {
-      setUser(response.user);
-    }
-    return response;
-  };
-
-  const refreshUser = async () => {
-    try {
-      const userData = await apiService.getCurrentUser();
-      if (userData && userData.user) setUser(userData.user);
-    } catch (e) {
-      console.error('Refresh user failed:', e);
     }
   };
 
@@ -105,15 +70,42 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const refreshUser = async () => {
+    try {
+      const data = await apiService.getCurrentUser();
+      if (data && data.user) {
+        setUser(data.user);
+        setIsAuthenticated(true);
+      }
+      return data;
+    } catch (error) {
+      console.error('Refresh user failed:', error);
+      throw error;
+    }
+  };
+
+  const updateProfile = async (profileData) => {
+    try {
+      const response = await apiService.updateProfile(profileData);
+      if (response && response.user) {
+        setUser(response.user);
+      }
+      return response;
+    } catch (error) {
+      console.error('Update profile failed:', error);
+      throw error;
+    }
+  };
+
   const value = {
     user,
     isLoading,
     isAuthenticated,
     login,
     register,
+    logout,
     updateProfile,
     refreshUser,
-    logout,
   };
 
   return (

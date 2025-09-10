@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { User, Mail, Phone, MapPin, Calendar, Edit2, Save, X, ShieldCheck } from 'lucide-react';
+import Modal from '../components/Modal';
 import { useAuth } from '../hooks/useAuth.jsx';
 import apiService from '../services/api';
 
 const ProfilePage = () => {
   const { user, updateProfile, refreshUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [modal, setModal] = useState({ open: false, type: 'info', title: '', message: '', onClose: null });
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -75,9 +77,9 @@ const ProfilePage = () => {
         }));
       }
       setIsEditing(false);
-      alert('Profile updated successfully!');
+      setModal({ open: true, type: 'success', title: 'Profile updated', message: 'Your profile has been updated successfully.', onClose: () => setModal(m => ({ ...m, open: false })) });
     } catch (error) {
-      alert('Failed to update profile. Please try again.');
+      setModal({ open: true, type: 'error', title: 'Update failed', message: 'Failed to update profile. Please try again.', onClose: () => setModal(m => ({ ...m, open: false })) });
     }
   };
 
@@ -130,6 +132,14 @@ const ProfilePage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
+      <Modal
+        isOpen={modal.open}
+        onClose={modal.onClose || (() => setModal(m => ({ ...m, open: false })))}
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+        primaryAction={{ label: 'OK', onClick: modal.onClose || (() => setModal(m => ({ ...m, open: false }))) }}
+      />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="bg-white rounded-xl shadow-sm p-6 mb-8">

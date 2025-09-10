@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth.jsx';
 import { useNavigate, useParams } from 'react-router-dom';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
+import Modal from '../components/Modal';
 
 const EditOpportunityPage = () => {
   const { id } = useParams();
@@ -12,6 +13,7 @@ const EditOpportunityPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [modal, setModal] = useState({ open: false, type: 'info', title: '', message: '', onClose: null });
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -158,13 +160,13 @@ const EditOpportunityPage = () => {
     e.preventDefault();
     
     if (!isAuthenticated) {
-      alert('Please log in to edit opportunities');
+      setModal({ open: true, type: 'info', title: 'Sign in required', message: 'Please log in to edit opportunities', onClose: () => setModal(m => ({ ...m, open: false })) });
       return;
     }
     
     // Check if user is an organization
     if (user && user.role !== 'organization') {
-      alert('Only organizations can edit opportunities');
+      setModal({ open: true, type: 'warning', title: 'Not allowed', message: 'Only organizations can edit opportunities', onClose: () => setModal(m => ({ ...m, open: false })) });
       return;
     }
 
@@ -213,11 +215,10 @@ const EditOpportunityPage = () => {
 
       const result = await response.json();
       console.log('Backend response:', result);
-      alert('Opportunity updated successfully!');
-      navigate('/my-opportunities');
+      setModal({ open: true, type: 'success', title: 'Updated', message: 'Opportunity updated successfully!', onClose: () => { setModal(m => ({ ...m, open: false })); navigate('/my-opportunities'); } });
     } catch (error) {
       console.error('Error updating opportunity:', error);
-      alert(error.message || 'Failed to update opportunity. Please try again.');
+      setModal({ open: true, type: 'error', title: 'Update failed', message: error.message || 'Failed to update opportunity. Please try again.', onClose: () => setModal(m => ({ ...m, open: false })) });
     } finally {
       setIsSubmitting(false);
     }
@@ -267,6 +268,14 @@ const EditOpportunityPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
+      <Modal
+        isOpen={modal.open}
+        onClose={modal.onClose || (() => setModal(m => ({ ...m, open: false })))}
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+        primaryAction={{ label: 'OK', onClick: modal.onClose || (() => setModal(m => ({ ...m, open: false }))) }}
+      />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">

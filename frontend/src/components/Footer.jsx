@@ -38,8 +38,8 @@ const Footer = () => {
                   </Link>
                 </li>
               )}
-              {/* Show Post Opportunity for non-authenticated users and organizations */}
-              {(!isAuthenticated || (user && user.role === 'organization')) && (
+              {/* Show Post Opportunity only for organizations */}
+              {isAuthenticated && user && user.role === 'organization' && (
                 <li>
                   <Link to="/create-opportunity" className="text-gray-300 hover:text-white transition-colors">
                     Post Opportunity

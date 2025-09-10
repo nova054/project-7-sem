@@ -98,8 +98,8 @@ const HomePage = () => {
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               )}
-              {/* Show Post Opportunity for non-authenticated users and organizations */}
-              {(!isAuthenticated || (user && user.role === 'organization')) && (
+              {/* Show Post Opportunity only for organizations */}
+              {isAuthenticated && user && user.role === 'organization' && (
                 <Link
                   to="/create-opportunity"
                   className="inline-flex items-center px-8 py-4 bg-transparent border-2 border-white text-white font-semibold rounded-lg hover:bg-white hover:text-indigo-600 transition-colors"

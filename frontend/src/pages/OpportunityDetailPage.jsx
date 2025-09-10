@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth.jsx';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
 import apiService from '../services/api';
+import Modal from '../components/Modal';
 
 const OpportunityDetailPage = () => {
   const { id } = useParams();
@@ -15,6 +16,7 @@ const OpportunityDetailPage = () => {
   const [error, setError] = useState(null);
   const [hasApplied, setHasApplied] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
+  const [modal, setModal] = useState({ open: false, type: 'info', title: '', message: '', onClose: null });
 
   useEffect(() => {
     if (id) {
@@ -71,12 +73,12 @@ const OpportunityDetailPage = () => {
 
   const handleApply = async () => {
     if (!isAuthenticated) {
-      navigate('/signin');
+      setModal({ open: true, type: 'info', title: 'Sign in required', message: 'Please sign in to apply.', onClose: () => { setModal(m => ({ ...m, open: false })); navigate('/signin'); } });
       return;
     }
     
     if (user.role !== 'volunteer') {
-      alert('Only volunteers can apply to opportunities');
+      setModal({ open: true, type: 'warning', title: 'Not allowed', message: 'Only volunteers can apply to opportunities', onClose: () => setModal(m => ({ ...m, open: false })) });
       return;
     }
 
@@ -88,10 +90,10 @@ const OpportunityDetailPage = () => {
       setIsApplying(true);
       await apiService.applyToOpportunity(opportunity._id);
       setHasApplied(true);
-      alert('Application submitted successfully!');
+      setModal({ open: true, type: 'success', title: 'Application submitted', message: 'Your application was submitted successfully.', onClose: () => setModal(m => ({ ...m, open: false })) });
     } catch (error) {
       console.error('Error applying to opportunity:', error);
-      alert('Failed to submit application. Please try again.');
+      setModal({ open: true, type: 'error', title: 'Submission failed', message: 'Failed to submit application. Please try again.', onClose: () => setModal(m => ({ ...m, open: false })) });
     } finally {
       setIsApplying(false);
     }
@@ -121,6 +123,14 @@ const OpportunityDetailPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
+      <Modal
+        isOpen={modal.open}
+        onClose={modal.onClose || (() => setModal(m => ({ ...m, open: false })))}
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+        primaryAction={{ label: 'OK', onClick: modal.onClose || (() => setModal(m => ({ ...m, open: false }))) }}
+      />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
@@ -174,6 +184,15 @@ const OpportunityDetailPage = () => {
                 {formatDate(opportunity.startDate)} - {formatDate(opportunity.endDate)}
               </span>
             </div>
+            {opportunity.imageUrl && (
+              <div className="ml-6 w-40 h-28 rounded-lg overflow-hidden flex-shrink-0 hidden sm:block">
+                <img
+                  src={opportunity.imageUrl}
+                  alt={opportunity.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
           </div>
 
           {/* Apply Button */}

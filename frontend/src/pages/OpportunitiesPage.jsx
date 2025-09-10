@@ -6,6 +6,7 @@ import OpportunityCard from '../components/OpportunityCard';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
 import EmptyState from '../components/EmptyState';
+import Modal from '../components/Modal';
 import { useOpportunities } from '../hooks/useOpportunities';
 import { useAuth } from '../hooks/useAuth.jsx';
 import apiService from '../services/api';
@@ -17,12 +18,14 @@ const OpportunitiesPage = () => {
   const [viewMode, setViewMode] = useState('grid');
   const [appliedOpportunities, setAppliedOpportunities] = useState(new Set());
   const [applyingTo, setApplyingTo] = useState(null);
+  const [modal, setModal] = useState({ open: false, type: 'info', title: '', message: '', onClose: null });
   const showFilters = false; // Hide filters in UI (keep logic for future implementation)
 
   const [section, setSection] = useState('all'); // 'all' | 'recommended'
   const [recommended, setRecommended] = useState([]);
   const [isLoadingRecommended, setIsLoadingRecommended] = useState(false);
   const [recommendedError, setRecommendedError] = useState(null);
+  const SHOW_SIMILARITY_SCORE = true; // Set to false to hide similarity score badges
 
   // Get initial search query from URL params
   const initialSearch = searchParams.get('search') || '';
@@ -79,7 +82,7 @@ const OpportunitiesPage = () => {
 
   const handleApply = async (opportunityId) => {
     if (!isAuthenticated) {
-      alert('Please log in to apply for opportunities');
+      setModal({ open: true, type: 'info', title: 'Sign in required', message: 'Please log in to apply for opportunities', onClose: () => setModal(m => ({ ...m, open: false })) });
       return;
     }
 
@@ -91,9 +94,9 @@ const OpportunitiesPage = () => {
       setApplyingTo(opportunityId);
       await applyToOpportunity(opportunityId);
       setAppliedOpportunities(prev => new Set([...prev, opportunityId]));
-      alert('Application submitted successfully!');
+      setModal({ open: true, type: 'success', title: 'Application submitted', message: 'Your application was submitted successfully.', onClose: () => setModal(m => ({ ...m, open: false })) });
     } catch (error) {
-      alert('Failed to submit application. Please try again.');
+      setModal({ open: true, type: 'error', title: 'Submission failed', message: 'Failed to submit application. Please try again.', onClose: () => setModal(m => ({ ...m, open: false })) });
     } finally {
       setApplyingTo(null);
     }
@@ -120,6 +123,14 @@ const OpportunitiesPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Modal
+        isOpen={modal.open}
+        onClose={modal.onClose || (() => setModal(m => ({ ...m, open: false })))}
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+        primaryAction={{ label: 'OK', onClick: modal.onClose || (() => setModal(m => ({ ...m, open: false }))) }}
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Opportunities</h1>
@@ -220,7 +231,7 @@ const OpportunitiesPage = () => {
                   <p className="text-gray-700">No recommendations yet. Try adding interests or applying to opportunities.</p>
                 </div>
               ) : (
-                renderCards(recommended, true)
+                renderCards(recommended, SHOW_SIMILARITY_SCORE)
               )
             )}
           </div>

@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { Plus, X, Calendar, MapPin, Users, Clock } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { useNavigate } from 'react-router-dom';
+import Modal from '../components/Modal';
 
 const CreateOpportunityPage = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [modal, setModal] = useState({ open: false, type: 'info', title: '', message: '', onClose: null });
   const [formData, setFormData] = useState({
     title: '',
     organization: '',
@@ -94,7 +96,7 @@ const CreateOpportunityPage = () => {
     e.preventDefault();
     
     if (!isAuthenticated) {
-      alert('Please log in to create opportunities');
+      setModal({ open: true, type: 'info', title: 'Sign in required', message: 'Please log in to create opportunities', onClose: () => setModal(m => ({ ...m, open: false })) });
       return;
     }
 
@@ -143,11 +145,10 @@ const CreateOpportunityPage = () => {
 
       const result = await response.json();
       console.log('Backend response:', result);
-      alert('Opportunity created successfully!');
-      navigate('/opportunities');
+      setModal({ open: true, type: 'success', title: 'Created', message: 'Opportunity created successfully!', onClose: () => { setModal(m => ({ ...m, open: false })); navigate('/opportunities'); } });
     } catch (error) {
       console.error('Error creating opportunity:', error);
-      alert(error.message || 'Failed to create opportunity. Please try again.');
+      setModal({ open: true, type: 'error', title: 'Creation failed', message: error.message || 'Failed to create opportunity. Please try again.', onClose: () => setModal(m => ({ ...m, open: false })) });
     } finally {
       setIsSubmitting(false);
     }
@@ -172,6 +173,14 @@ const CreateOpportunityPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
+      <Modal
+        isOpen={modal.open}
+        onClose={modal.onClose || (() => setModal(m => ({ ...m, open: false })))}
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+        primaryAction={{ label: 'OK', onClick: modal.onClose || (() => setModal(m => ({ ...m, open: false }))) }}
+      />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Phone, MapPin, Clock, Send, MessageCircle, HelpCircle, Building } from 'lucide-react';
 import apiService from '../services/api';
+import Modal from '../components/Modal';
 
 const ContactPage = () => {
   const [formData, setFormData] = useState({
@@ -11,6 +12,7 @@ const ContactPage = () => {
     message: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [modal, setModal] = useState({ open: false, type: 'info', title: '', message: '', onClose: null });
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -23,7 +25,7 @@ const ContactPage = () => {
     
     try {
       await apiService.sendContactMessage(formData);
-      alert('Message sent successfully! We\'ll get back to you soon.');
+      setModal({ open: true, type: 'success', title: 'Message sent', message: "We'll get back to you soon.", onClose: () => setModal(m => ({ ...m, open: false })) });
       setFormData({
         name: '',
         email: '',
@@ -32,7 +34,7 @@ const ContactPage = () => {
         message: ''
       });
     } catch (error) {
-      alert('Failed to send message. Please try again.');
+      setModal({ open: true, type: 'error', title: 'Send failed', message: 'Failed to send message. Please try again.', onClose: () => setModal(m => ({ ...m, open: false })) });
     } finally {
       setIsSubmitting(false);
     }
@@ -94,6 +96,14 @@ const ContactPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
+      <Modal
+        isOpen={modal.open}
+        onClose={modal.onClose || (() => setModal(m => ({ ...m, open: false })))}
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+        primaryAction={{ label: 'OK', onClick: modal.onClose || (() => setModal(m => ({ ...m, open: false }))) }}
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-12">

@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
 import EmptyState from '../components/EmptyState';
+import Modal from '../components/Modal';
 
 const MyOpportunitiesPage = () => {
   const { user, isAuthenticated } = useAuth();
@@ -14,6 +15,8 @@ const MyOpportunitiesPage = () => {
   const [error, setError] = useState(null);
   const [expanded, setExpanded] = useState({}); // opportunityId => boolean
   const [applicantsByOpp, setApplicantsByOpp] = useState({}); // opportunityId => applicants[]
+  const [modal, setModal] = useState({ open: false, type: 'info', title: '', message: '', onClose: null });
+  const [confirm, setConfirm] = useState({ open: false, title: '', message: '', onConfirm: null, onCancel: null });
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -49,29 +52,33 @@ const MyOpportunitiesPage = () => {
     navigate(`/edit-opportunity/${opportunityId}`);
   };
 
-  const handleDelete = async (opportunityId) => {
-    if (!window.confirm('Are you sure you want to delete this opportunity? This action cannot be undone.')) {
-      return;
-    }
+  const handleDelete = (opportunityId) => {
+    setConfirm({
+      open: true,
+      title: 'Delete opportunity',
+      message: 'Are you sure you want to delete this opportunity? This action cannot be undone.',
+      onConfirm: async () => {
+        setConfirm(c => ({ ...c, open: false }));
+        try {
+          const response = await fetch(`/api/opportunities/${opportunityId}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          });
 
-    try {
-      const response = await fetch(`/api/opportunities/${opportunityId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          if (!response.ok) {
+            throw new Error('Failed to delete opportunity');
+          }
+
+          setOpportunities(prev => prev.filter(opp => opp._id !== opportunityId));
+          setModal({ open: true, type: 'success', title: 'Deleted', message: 'Opportunity deleted successfully.', onClose: () => setModal(m => ({ ...m, open: false })) });
+        } catch (err) {
+          setModal({ open: true, type: 'error', title: 'Delete failed', message: err.message || 'Failed to delete opportunity.', onClose: () => setModal(m => ({ ...m, open: false })) });
         }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete opportunity');
-      }
-
-      // Remove the deleted opportunity from the list
-      setOpportunities(prev => prev.filter(opp => opp._id !== opportunityId));
-      alert('Opportunity deleted successfully!');
-    } catch (err) {
-      alert('Failed to delete opportunity: ' + err.message);
-    }
+      },
+      onCancel: () => setConfirm(c => ({ ...c, open: false }))
+    });
   };
 
   const handleView = (opportunityId) => {
@@ -146,6 +153,7 @@ const MyOpportunitiesPage = () => {
   }
 
   return (
+    <>
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
@@ -310,6 +318,24 @@ const MyOpportunitiesPage = () => {
         )}
       </div>
     </div>
+    <Modal
+      isOpen={modal.open}
+      onClose={modal.onClose || (() => setModal(m => ({ ...m, open: false })))}
+      title={modal.title}
+      message={modal.message}
+      type={modal.type}
+      primaryAction={{ label: 'OK', onClick: modal.onClose || (() => setModal(m => ({ ...m, open: false }))) }}
+    />
+    <Modal
+      isOpen={confirm.open}
+      onClose={confirm.onCancel || (() => setConfirm(c => ({ ...c, open: false })))}
+      title={confirm.title}
+      message={confirm.message}
+      type="warning"
+      primaryAction={{ label: 'Delete', onClick: confirm.onConfirm }}
+      secondaryAction={{ label: 'Cancel', onClick: confirm.onCancel || (() => setConfirm(c => ({ ...c, open: false }))) }}
+    />
+    </>
   );
 };
 

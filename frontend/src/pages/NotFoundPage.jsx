@@ -1,8 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Home, Search, ArrowLeft, Heart } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth.jsx';
 
 const NotFoundPage = () => {
+  const { user } = useAuth();
+  
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full text-center">
@@ -66,12 +69,14 @@ const NotFoundPage = () => {
             >
               Find Opportunities
             </Link>
-            <Link
-              to="/create-opportunity"
-              className="text-indigo-600 hover:text-indigo-700 hover:underline"
-            >
-              Post Opportunity
-            </Link>
+            {user && user.role === 'organization' && (
+              <Link
+                to="/create-opportunity"
+                className="text-indigo-600 hover:text-indigo-700 hover:underline"
+              >
+                Post Opportunity
+              </Link>
+            )}
             <Link
               to="/about"
               className="text-indigo-600 hover:text-indigo-700 hover:underline"
