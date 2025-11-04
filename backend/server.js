@@ -6,6 +6,7 @@ const opportunityRoutes = require('./routes/opportunityRoutes');
 const tagRoutes = require('./routes/tagRoutes');
 const userRoutes = require('./routes/userRoutes');
 const contactRoutes = require('./routes/contactRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
@@ -35,6 +36,8 @@ app.use('/api/tags', tagRoutes);
 app.use('/api/user', userRoutes);
 
 app.use('/api/contact', contactRoutes);
+
+app.use('/api/admin', adminRoutes);
 
 // Serve React app for non-API, non-static routes
 app.use((req, res, next) => {

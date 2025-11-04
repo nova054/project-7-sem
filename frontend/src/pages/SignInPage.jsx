@@ -19,8 +19,16 @@ const SignInPage = () => {
     setError('');
     setLoading(true);
     try {
-      await login(email, password);
-      navigate('/');
+      const response = await login(email, password);
+      
+      // Redirect based on user role
+      if (response.user.role === 'admin') {
+        navigate('/admin');
+      } else if (response.user.role === 'organization') {
+        navigate('/my-opportunities');
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       // Handle specific error cases
       if (err.message.includes('verify your email')) {
@@ -97,7 +105,7 @@ const SignInPage = () => {
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              Don\'t have an account?{' '}
+              Don't have an account?{' '}
               <Link to="/signup" className="text-indigo-600 hover:text-indigo-700 font-medium">
                 Create one
               </Link>

@@ -41,9 +41,15 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const response = await apiService.login(email, password);
-      setUser(response.user);
       setIsAuthenticated(true);
-      return response;
+      // Fetch full user profile after login so profile fields (phone, skills, bio, availability) are present
+      const me = await apiService.getCurrentUser();
+      if (me && me.user) {
+        setUser(me.user);
+      } else {
+        setUser(response.user);
+      }
+      return me || response;
     } catch (error) {
       throw error;
     }
@@ -52,9 +58,15 @@ export const AuthProvider = ({ children }) => {
   const register = async (name, email, password, role = 'volunteer', interests = undefined) => {
     try {
       const response = await apiService.register(name, email, password, role, interests);
-      setUser(response.user);
       setIsAuthenticated(true);
-      return response;
+      // Fetch full user profile after register
+      const me = await apiService.getCurrentUser();
+      if (me && me.user) {
+        setUser(me.user);
+      } else {
+        setUser(response.user);
+      }
+      return me || response;
     } catch (error) {
       throw error;
     }

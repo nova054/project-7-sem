@@ -10,7 +10,7 @@ import apiService from '../services/api';
 import Modal from '../components/Modal';
 
 const SavedOpportunitiesPage = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { savedOpportunities, toggleSaveOpportunity, isOpportunitySaved } = useSavedOpportunities();
   const [viewMode, setViewMode] = useState('grid');
   const [savedOpportunityDetails, setSavedOpportunityDetails] = useState([]);
@@ -41,6 +41,16 @@ const SavedOpportunitiesPage = () => {
   const handleApply = async (opportunityId) => {
     if (!isAuthenticated) {
       setModal({ open: true, type: 'info', title: 'Sign in required', message: 'Please log in to apply for opportunities', onClose: () => setModal(m => ({ ...m, open: false })) });
+      return;
+    }
+
+    if (user?.role === 'organization') {
+      setModal({ open: true, type: 'warning', title: 'Not allowed', message: 'Organizations cannot apply to opportunities', onClose: () => setModal(m => ({ ...m, open: false })) });
+      return;
+    }
+
+    if (user?.isVerified === false) {
+      setModal({ open: true, type: 'warning', title: 'Email verification required', message: 'Please verify your email before applying to opportunities.', onClose: () => setModal(m => ({ ...m, open: false })) });
       return;
     }
 

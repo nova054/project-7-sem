@@ -17,6 +17,10 @@ import NotFoundPage from './pages/NotFoundPage';
 import SignInPage from './pages/SignInPage';
 import SignUpPage from './pages/SignUpPage';
 import EmailVerificationPage from './pages/EmailVerificationPage';
+import AdminDashboard from './pages/AdminDashboard';
+import UsersList from './pages/admin/UsersList';
+import OpportunitiesList from './pages/admin/OpportunitiesList';
+import AdminRoute from './components/AdminRoute';
 
 function App() {
   return (
@@ -36,6 +40,9 @@ function App() {
             <Route path="/saved" element={<SavedOpportunitiesPage />} />
             <Route path="/create-opportunity" element={<CreateOpportunityPage />} />
             <Route path="/edit-opportunity/:id" element={<EditOpportunityPage />} />
+            <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+            <Route path="/admin/users" element={<AdminRoute><UsersList /></AdminRoute>} />
+            <Route path="/admin/opportunities" element={<AdminRoute><OpportunitiesList /></AdminRoute>} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="*" element={<NotFoundPage />} />

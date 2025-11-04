@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.jsx';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import TagSelector from '../components/TagSelector';
 
 const SignUpPage = () => {
-  const { register } = useAuth();
+  const { register, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -101,6 +102,25 @@ const SignUpPage = () => {
       setIsLoading(false);
     }
   };
+
+  // If already authenticated, redirect appropriately (unverified -> verify page)
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.isVerified === false) {
+        if (location.pathname !== '/verify-email') {
+          navigate('/verify-email', { replace: true, state: { email: user.email } });
+        }
+        return;
+      }
+      if (user.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else if (user.role === 'organization') {
+        navigate('/my-opportunities', { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
+    }
+  }, [isAuthenticated, user, navigate, location.pathname]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">

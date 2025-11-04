@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Edit, Trash2, Eye, Users, Calendar, MapPin, Clock, ChevronDown, ChevronUp, Mail, Phone } from 'lucide-react';
+import { Edit, Trash2, Eye, Users, Calendar, MapPin, Clock, ChevronDown, ChevronUp, Mail, Phone, Check, X, CheckCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { useNavigate } from 'react-router-dom';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
 import EmptyState from '../components/EmptyState';
 import Modal from '../components/Modal';
+import apiService from '../services/api';
 
 const MyOpportunitiesPage = () => {
   const { user, isAuthenticated } = useAuth();
@@ -14,7 +15,8 @@ const MyOpportunitiesPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expanded, setExpanded] = useState({}); // opportunityId => boolean
-  const [applicantsByOpp, setApplicantsByOpp] = useState({}); // opportunityId => applicants[]
+  const [applicantsByOpp, setApplicantsByOpp] = useState({}); // opportunityId => { applicants: [], approvedVolunteers: [] }
+  const [processing, setProcessing] = useState({}); // opportunityId_userId => boolean
   const [modal, setModal] = useState({ open: false, type: 'info', title: '', message: '', onClose: null });
   const [confirm, setConfirm] = useState({ open: false, title: '', message: '', onConfirm: null, onCancel: null });
 
@@ -90,15 +92,148 @@ const MyOpportunitiesPage = () => {
     // Load applicants on first expand
     if (!applicantsByOpp[opportunityId]) {
       try {
-        const res = await fetch(`/api/opportunities/${opportunityId}/applicants`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
-        if (!res.ok) throw new Error('Failed to load applicants');
-        const data = await res.json();
-        setApplicantsByOpp(prev => ({ ...prev, [opportunityId]: data.applicants || [] }));
+        const data = await apiService.getApplicants(opportunityId);
+        setApplicantsByOpp(prev => ({ 
+          ...prev, 
+          [opportunityId]: {
+            applicants: data.applicants || [],
+            approvedVolunteers: data.approvedVolunteers || []
+          }
+        }));
       } catch (e) {
-        alert(e.message || 'Failed to load applicants');
+        setModal({ 
+          open: true, 
+          type: 'error', 
+          title: 'Failed to load applicants', 
+          message: e.message || 'Failed to load applicants', 
+          onClose: () => setModal(m => ({ ...m, open: false })) 
+        });
       }
+    }
+  };
+
+  const handleApprove = async (opportunityId, userId, userName) => {
+    const key = `${opportunityId}_${userId}`;
+    try {
+      setProcessing(prev => ({ ...prev, [key]: true }));
+      await apiService.approveApplicant(opportunityId, userId);
+      
+      // Update local state
+      setApplicantsByOpp(prev => {
+        const current = prev[opportunityId] || { applicants: [], approvedVolunteers: [] };
+        const approvedIds = current.approvedVolunteers.map(v => v._id || v.id);
+        const applicant = current.applicants.find(a => (a._id || a.id) === userId);
+        
+        return {
+          ...prev,
+          [opportunityId]: {
+            applicants: current.applicants.filter(a => (a._id || a.id) !== userId),
+            approvedVolunteers: approvedIds.includes(userId) 
+              ? current.approvedVolunteers 
+              : [...current.approvedVolunteers, applicant].filter(Boolean)
+          }
+        };
+      });
+      
+      setModal({ 
+        open: true, 
+        type: 'success', 
+        title: 'Approved', 
+        message: `${userName || 'Applicant'} has been approved and notified by email.`, 
+        onClose: () => setModal(m => ({ ...m, open: false })) 
+      });
+    } catch (error) {
+      setModal({ 
+        open: true, 
+        type: 'error', 
+        title: 'Approval failed', 
+        message: error.message || 'Failed to approve applicant.', 
+        onClose: () => setModal(m => ({ ...m, open: false })) 
+      });
+    } finally {
+      setProcessing(prev => ({ ...prev, [key]: false }));
+    }
+  };
+
+  const handleReject = async (opportunityId, userId, userName) => {
+    const key = `${opportunityId}_${userId}`;
+    try {
+      setProcessing(prev => ({ ...prev, [key]: true }));
+      await apiService.rejectApplicant(opportunityId, userId);
+      
+      // Update local state - remove from both applicants and approvedVolunteers
+      setApplicantsByOpp(prev => {
+        const current = prev[opportunityId] || { applicants: [], approvedVolunteers: [] };
+        return {
+          ...prev,
+          [opportunityId]: {
+            applicants: current.applicants.filter(a => (a._id || a.id) !== userId),
+            approvedVolunteers: current.approvedVolunteers.filter(a => (a._id || a.id) !== userId)
+          }
+        };
+      });
+      
+      setModal({ 
+        open: true, 
+        type: 'success', 
+        title: 'Rejected', 
+        message: `${userName || 'Applicant'} has been rejected and removed from the application list.`, 
+        onClose: () => setModal(m => ({ ...m, open: false })) 
+      });
+    } catch (error) {
+      setModal({ 
+        open: true, 
+        type: 'error', 
+        title: 'Rejection failed', 
+        message: error.message || 'Failed to reject applicant.', 
+        onClose: () => setModal(m => ({ ...m, open: false })) 
+      });
+    } finally {
+      setProcessing(prev => ({ ...prev, [key]: false }));
+    }
+  };
+
+  const handleMarkAttendance = async (opportunityId, userId, userName) => {
+    const key = `${opportunityId}_${userId}_attendance`;
+    try {
+      setProcessing(prev => ({ ...prev, [key]: true }));
+      await apiService.markAsCompleted(opportunityId, userId);
+      
+      // Update local state to mark as completed
+      setApplicantsByOpp(prev => {
+        const current = prev[opportunityId] || { applicants: [], approvedVolunteers: [] };
+        return {
+          ...prev,
+          [opportunityId]: {
+            applicants: current.applicants,
+            approvedVolunteers: current.approvedVolunteers.map(vol => {
+              const volId = vol._id || vol.id;
+              if (volId === userId) {
+                return { ...vol, isCompleted: true };
+              }
+              return vol;
+            })
+          }
+        };
+      });
+      
+      setModal({ 
+        open: true, 
+        type: 'success', 
+        title: 'Attendance Marked', 
+        message: `${userName || 'Volunteer'}'s attendance has been confirmed and they have been notified by email.`, 
+        onClose: () => setModal(m => ({ ...m, open: false })) 
+      });
+    } catch (error) {
+      setModal({ 
+        open: true, 
+        type: 'error', 
+        title: 'Failed to mark attendance', 
+        message: error.message || 'Failed to mark attendance. They may have already been marked.', 
+        onClose: () => setModal(m => ({ ...m, open: false })) 
+      });
+    } finally {
+      setProcessing(prev => ({ ...prev, [key]: false }));
     }
   };
 
@@ -284,30 +419,143 @@ const MyOpportunitiesPage = () => {
                   <div className="mt-4 border-t pt-4">
                     <button
                       onClick={() => toggleApplicants(opportunity._id)}
-                      className="inline-flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-800"
+                      className="inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-800"
                     >
                       {expanded[opportunity._id] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       {expanded[opportunity._id] ? 'Hide Applicants' : 'Show Applicants'}
+                      {applicantsByOpp[opportunity._id] && (
+                        <span className="ml-2 px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full">
+                          {((applicantsByOpp[opportunity._id].applicants || []).length + (applicantsByOpp[opportunity._id].approvedVolunteers || []).length) || '0'}
+                        </span>
+                      )}
                     </button>
 
                     {expanded[opportunity._id] && (
                       <div className="mt-3 space-y-3">
-                        {(applicantsByOpp[opportunity._id] || []).length === 0 ? (
-                          <p className="text-sm text-gray-600">No applicants yet.</p>
-                        ) : (
-                          (applicantsByOpp[opportunity._id] || []).map(vol => (
-                            <div key={vol._id} className="p-3 border rounded-lg">
-                              <div className="font-medium">{vol.name}</div>
-                              <div className="text-sm text-gray-700 inline-flex items-center gap-2"><Mail className="h-4 w-4" /> {vol.email}</div>
-                              {vol.phone && (
-                                <div className="text-sm text-gray-700 inline-flex items-center gap-2"><Phone className="h-4 w-4" /> {vol.phone}</div>
-                              )}
-                              {vol.location && (
-                                <div className="text-sm text-gray-700">Location: {vol.location}</div>
-                              )}
+                        {/* Approved Volunteers Section */}
+                        {(applicantsByOpp[opportunity._id]?.approvedVolunteers || []).length > 0 && (
+                          <div className="mb-4">
+                            <h4 className="text-sm font-semibold text-green-700 mb-2 flex items-center gap-2">
+                              <Check className="h-4 w-4" />
+                              Approved Volunteers ({(applicantsByOpp[opportunity._id].approvedVolunteers || []).length})
+                            </h4>
+                            <div className="space-y-2">
+                              {(applicantsByOpp[opportunity._id].approvedVolunteers || []).map(vol => {
+                                const volId = vol._id || vol.id;
+                                const key = `${opportunity._id}_${volId}`;
+                                const attendanceKey = `${opportunity._id}_${volId}_attendance`;
+                                const isCompleted = vol.isCompleted || false;
+                                return (
+                                  <div key={volId} className={`p-3 border-2 rounded-lg ${
+                                    isCompleted 
+                                      ? 'border-blue-300 bg-blue-50' 
+                                      : 'border-green-200 bg-green-50'
+                                  }`}>
+                                    <div className="flex items-start justify-between">
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <div className="font-medium text-gray-900">{vol.name}</div>
+                                          {isCompleted && (
+                                            <CheckCircle className="h-4 w-4 text-blue-600" title="Attendance confirmed" />
+                                          )}
+                                        </div>
+                                        <div className="text-sm text-gray-700 mt-1 inline-flex items-center gap-2"><Mail className="h-4 w-4" /> {vol.email}</div>
+                                        {vol.phone && (
+                                          <div className="text-sm text-gray-700 mt-1 inline-flex items-center gap-2"><Phone className="h-4 w-4" /> {vol.phone}</div>
+                                        )}
+                                        {vol.location && (
+                                          <div className="text-sm text-gray-700 mt-1">Location: {vol.location}</div>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-2 ml-4">
+                                        {isCompleted ? (
+                                          <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                                            Attendance Confirmed
+                                          </span>
+                                        ) : (
+                                          <>
+                                            <button
+                                              onClick={() => handleMarkAttendance(opportunity._id, volId, vol.name)}
+                                              disabled={processing[attendanceKey]}
+                                              className="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                                              title="Mark attendance"
+                                            >
+                                              <CheckCircle className="h-4 w-4" />
+                                              {processing[attendanceKey] ? 'Marking...' : 'Mark Attendance'}
+                                            </button>
+                                            <button
+                                              onClick={() => handleReject(opportunity._id, volId, vol.name)}
+                                              disabled={processing[key]}
+                                              className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                                              title="Remove approval"
+                                            >
+                                              <X className="h-4 w-4" />
+                                            </button>
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
-                          ))
+                          </div>
                         )}
+
+                        {/* Pending Applicants Section */}
+                        <div>
+                          <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                            Pending Applicants ({(applicantsByOpp[opportunity._id]?.applicants || []).length || 0})
+                          </h4>
+                          {(applicantsByOpp[opportunity._id]?.applicants || []).length === 0 ? (
+                            <p className="text-sm text-gray-600">
+                              {(applicantsByOpp[opportunity._id]?.approvedVolunteers || []).length > 0 
+                                ? 'No pending applicants.' 
+                                : 'No applicants yet.'}
+                            </p>
+                          ) : (
+                            <div className="space-y-2">
+                              {(applicantsByOpp[opportunity._id].applicants || []).map(vol => {
+                                const volId = vol._id || vol.id;
+                                const key = `${opportunity._id}_${volId}`;
+                                return (
+                                  <div key={volId} className="p-3 border rounded-lg bg-white">
+                                    <div className="flex items-start justify-between">
+                                      <div className="flex-1">
+                                        <div className="font-medium text-gray-900">{vol.name}</div>
+                                        <div className="text-sm text-gray-700 mt-1 inline-flex items-center gap-2"><Mail className="h-4 w-4" /> {vol.email}</div>
+                                        {vol.phone && (
+                                          <div className="text-sm text-gray-700 mt-1 inline-flex items-center gap-2"><Phone className="h-4 w-4" /> {vol.phone}</div>
+                                        )}
+                                        {vol.location && (
+                                          <div className="text-sm text-gray-700 mt-1">Location: {vol.location}</div>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-2 ml-4">
+                                        <button
+                                          onClick={() => handleApprove(opportunity._id, volId, vol.name)}
+                                          disabled={processing[key]}
+                                          className="px-3 py-1.5 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                                        >
+                                          <Check className="h-4 w-4" />
+                                          {processing[key] ? 'Processing...' : 'Approve'}
+                                        </button>
+                                        <button
+                                          onClick={() => handleReject(opportunity._id, volId, vol.name)}
+                                          disabled={processing[key]}
+                                          className="px-3 py-1.5 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                                        >
+                                          <X className="h-4 w-4" />
+                                          {processing[key] ? 'Processing...' : 'Reject'}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>

@@ -13,7 +13,7 @@ import apiService from '../services/api';
 
 const OpportunitiesPage = () => {
   const [searchParams] = useSearchParams();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [viewMode, setViewMode] = useState('grid');
   const [appliedOpportunities, setAppliedOpportunities] = useState(new Set());
@@ -83,6 +83,16 @@ const OpportunitiesPage = () => {
   const handleApply = async (opportunityId) => {
     if (!isAuthenticated) {
       setModal({ open: true, type: 'info', title: 'Sign in required', message: 'Please log in to apply for opportunities', onClose: () => setModal(m => ({ ...m, open: false })) });
+      return;
+    }
+
+    if (user?.role === 'organization') {
+      setModal({ open: true, type: 'warning', title: 'Not allowed', message: 'Organizations cannot apply to opportunities', onClose: () => setModal(m => ({ ...m, open: false })) });
+      return;
+    }
+
+    if (user?.isVerified === false) {
+      setModal({ open: true, type: 'warning', title: 'Email verification required', message: 'Please verify your email before applying to opportunities.', onClose: () => setModal(m => ({ ...m, open: false })) });
       return;
     }
 

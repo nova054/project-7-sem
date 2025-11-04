@@ -77,8 +77,13 @@ const OpportunityDetailPage = () => {
       return;
     }
     
-    if (user.role !== 'volunteer') {
-      setModal({ open: true, type: 'warning', title: 'Not allowed', message: 'Only volunteers can apply to opportunities', onClose: () => setModal(m => ({ ...m, open: false })) });
+    if (user.role !== 'volunteer' && user.role !== 'admin') {
+      setModal({ open: true, type: 'warning', title: 'Not allowed', message: 'Only volunteers or admins can apply to opportunities', onClose: () => setModal(m => ({ ...m, open: false })) });
+      return;
+    }
+
+    if (user.isVerified === false) {
+      setModal({ open: true, type: 'warning', title: 'Email verification required', message: 'Please verify your email before applying to opportunities.', onClose: () => setModal(m => ({ ...m, open: false })) });
       return;
     }
 
@@ -196,7 +201,7 @@ const OpportunityDetailPage = () => {
           </div>
 
           {/* Apply Button */}
-          {isAuthenticated && user?.role === 'volunteer' && (
+          {isAuthenticated && (user?.role === 'volunteer' || user?.role === 'admin') && (
             <div className="flex justify-center">
               <button
                 onClick={handleApply}

@@ -26,17 +26,15 @@ const AboutPage = () => {
   ];
 
   const features = [
-    'Easy opportunity discovery and filtering',
-    'Secure application and communication system',
-    'Progress tracking and volunteer hour logging',
-    'Organization verification and reviews',
-    'Mobile-friendly platform',
-    'Community impact reporting'
+    'Easy opportunity discovery.',
+    'Track your volunteer history.',
+    'Find opportunities that fit your skills and passions.',
+    'Choose when, where, and how you want to volunteer.',
+    
   ];
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Hero Section */}
       <section className="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 text-white py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
@@ -53,7 +51,6 @@ const AboutPage = () => {
 
 
 
-      {/* Mission Section */}
       <section className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-1 gap-12 items-center">
@@ -81,7 +78,6 @@ const AboutPage = () => {
         </div>
       </section>
 
-      {/* Values Section */}
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -104,7 +100,6 @@ const AboutPage = () => {
         </div>
       </section>
 
-      {/* Features Section */}
       <section className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-1 gap-12 items-center">
@@ -129,7 +124,6 @@ const AboutPage = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
       <section className="py-20 bg-indigo-600">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">

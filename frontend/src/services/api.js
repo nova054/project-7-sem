@@ -173,16 +173,24 @@ class ApiService {
     return this.request(`/opportunities/${opportunityId}/applicants`);
   }
 
-  async approveApplicant(opportunityId, applicantId) {
+  async approveApplicant(opportunityId, userId) {
     return this.request(`/opportunities/${opportunityId}/approve-applicant`, {
       method: 'POST',
-      body: JSON.stringify({ applicantId }),
+      body: JSON.stringify({ userId }),
     });
   }
 
-  async markAsCompleted(opportunityId) {
+  async rejectApplicant(opportunityId, userId) {
+    return this.request(`/opportunities/${opportunityId}/reject-applicant`, {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    });
+  }
+
+  async markAsCompleted(opportunityId, userId) {
     return this.request(`/opportunities/${opportunityId}/mark-completed`, {
       method: 'POST',
+      body: JSON.stringify({ userId }),
     });
   }
 
@@ -235,6 +243,63 @@ class ApiService {
   // Get user interests (for testing)
   async getUserInterests() {
     return this.request('/user/interests');
+  }
+
+  // Admin API methods
+  async adminListUsers(params = {}) {
+    return this.request(`/admin/users?${new URLSearchParams(params).toString()}`);
+  }
+
+  async adminCreateUser(userData) {
+    return this.request('/admin/users', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+  }
+
+  async adminGetUser(id) {
+    return this.request(`/admin/users/${id}`);
+  }
+
+  async adminUpdateUser(id, userData) {
+    return this.request(`/admin/users/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(userData),
+    });
+  }
+
+  async adminDeleteUser(id) {
+    return this.request(`/admin/users/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async adminListOpportunities(params = {}) {
+    return this.request(`/admin/opportunities?${new URLSearchParams(params).toString()}`);
+  }
+
+  async adminCreateOpportunity(opportunityData) {
+    return this.request('/admin/opportunities', {
+      method: 'POST',
+      body: JSON.stringify(opportunityData),
+    });
+  }
+
+  async adminUpdateOpportunity(id, opportunityData) {
+    return this.request(`/admin/opportunities/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(opportunityData),
+    });
+  }
+
+  async adminDeleteOpportunity(id) {
+    return this.request(`/admin/opportunities/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async adminGetStats() {
+    return this.request('/admin/stats');
   }
 }
 

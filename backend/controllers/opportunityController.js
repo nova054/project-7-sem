@@ -2,6 +2,7 @@ const Opportunity = require('../models/Opportunity');
 const User = require('../models/User');
 const Tag = require('../models/Tag'); // Added Tag model import
 const {recommendCosineBased} = require('../utils/recommendCosine');
+const sendEmail = require('../utils/sendEmail');
 
 exports.createOpportunity = async (req, res)=>{
     console.log('=== CREATE OPPORTUNITY DEBUG ===');
@@ -164,8 +165,8 @@ exports.getMyOpportunities = async (req, res)=>{
 // Return opportunities the current volunteer has applied to
 exports.getMyApplications = async (req, res) => {
     try {
-        if (req.user.role !== 'volunteer'){
-            return res.status(403).json({ message: 'Only volunteers can view this' });
+        if (req.user.role !== 'volunteer' && req.user.role !== 'admin'){
+            return res.status(403).json({ message: 'Only volunteers or admins can view this' });
         }
 
         const opportunities = await Opportunity
@@ -185,8 +186,13 @@ exports.applyToOpportunity = async (req,res)=>{
         console.log('User role:', req.user.role);
         console.log('Opportunity ID:', req.params.id);
 
-        if (req.user.role !== 'volunteer'){
-            return res.status(403).json({message: 'Only volunteers can apply'});
+        if (req.user.role !== 'volunteer' && req.user.role !== 'admin'){
+            return res.status(403).json({message: 'Only volunteers or admins can apply'});
+        }
+
+        // Require verified email before applying
+        if (!req.user.isVerified) {
+            return res.status(403).json({ message: 'Please verify your email before applying' });
         }
 
         const opportunity = await Opportunity.findById(req.params.id);
@@ -286,6 +292,7 @@ exports.getApplicants = async (req,res)=>{
     try{
         const opportunity = await Opportunity.findById(req.params.id)
         .populate('applicants', 'name email role phone location')
+        .populate('approvedVolunteers', 'name email role phone location')
         .populate('organization', 'name');
         if(!opportunity){
             return  res.status(404).json({message: 'Opportunity not found'});
@@ -295,12 +302,28 @@ exports.getApplicants = async (req,res)=>{
             return res.status(403).json({message: 'Not authorized'});
         }
         
+        // Check which approved volunteers have been marked as completed
+        const approvedVolunteersWithStatus = await Promise.all(
+            (opportunity.approvedVolunteers || []).map(async (volunteer) => {
+                const volunteerDoc = await User.findById(volunteer._id || volunteer.id);
+                const isCompleted = volunteerDoc?.volunteerHistory?.some(
+                    (entry) => entry.opportunity?.toString() === opportunity._id.toString()
+                ) || false;
+                
+                return {
+                    ...volunteer.toObject ? volunteer.toObject() : volunteer,
+                    isCompleted
+                };
+            })
+        );
+        
         res.json({
             opportunity: {
                 id: opportunity._id,
                 title: opportunity.title
             },
             applicants: opportunity.applicants,
+            approvedVolunteers: approvedVolunteersWithStatus,
         });
     } catch (err){
         res.status(500).json({message: 'Server error', error: err.message});
@@ -350,13 +373,13 @@ exports.deleteOpportunity = async (req, res)=>{
 exports.approveApplicant = async (req, res) => {
     try {
         const { userId } = req.body;
-        const opportunity = await Opportunity.findById(req.params.id).populate('postedBy');
+        const opportunity = await Opportunity.findById(req.params.id).populate('organization');
 
         if (!opportunity) {
             return res.status(404).json({ message: 'Opportunity not found' });
         }
 
-        if (req.user.role !== 'organization' || opportunity.postedBy._id.toString() !== req.user._id.toString()) {
+        if (req.user.role !== 'organization' || opportunity.organization._id.toString() !== req.user._id.toString()) {
             return res.status(403).json({ message: 'Not authorized' });
         }
 
@@ -381,8 +404,8 @@ Hello ${volunteer.name},
 
 📌 Title: ${opportunity.title}
 📝 Description: ${opportunity.description}
-🏢 Organization: ${opportunity.postedBy.name}
-📅 Date: ${opportunity.date.toDateString()}
+🏢 Organization: ${opportunity.organization.name}
+📅 Date: ${opportunity.startDate ? new Date(opportunity.startDate).toDateString() : 'TBD'}
 
 You can view more details in your dashboard. We look forward to your participation!
 
@@ -398,6 +421,42 @@ Volunteer Recommendation System Team
         }
 
         res.status(200).json({ message: 'Volunteer approved and notified by email' });
+
+    } catch (err) {
+        res.status(500).json({ message: 'Server error', error: err.message });
+    }
+};
+
+exports.rejectApplicant = async (req, res) => {
+    try {
+        const { userId } = req.body;
+        const opportunity = await Opportunity.findById(req.params.id).populate('organization');
+
+        if (!opportunity) {
+            return res.status(404).json({ message: 'Opportunity not found' });
+        }
+
+        if (req.user.role !== 'organization' || opportunity.organization._id.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Not authorized' });
+        }
+
+        if (!opportunity.applicants.includes(userId)) {
+            return res.status(400).json({ message: 'User did not apply' });
+        }
+
+        // Remove from applicants list
+        opportunity.applicants = opportunity.applicants.filter(
+            applicantId => applicantId.toString() !== userId.toString()
+        );
+        
+        // Also remove from approvedVolunteers if they were previously approved
+        opportunity.approvedVolunteers = opportunity.approvedVolunteers.filter(
+            volunteerId => volunteerId.toString() !== userId.toString()
+        );
+        
+        await opportunity.save();
+
+        res.status(200).json({ message: 'Applicant rejected and removed from application list' });
 
     } catch (err) {
         res.status(500).json({ message: 'Server error', error: err.message });
@@ -420,9 +479,13 @@ exports.markAsCompleted = async (req, res)=>{
         }
 
         const volunteer = await User.findById(userId);
+        
+        if(!volunteer){
+            return res.status(404).json({message: 'Volunteer not found'});
+        }
 
-        const alreadyCompleted = volunteer.volunteerHistory.some(
-            (entry)=>entry.opportunity.toString() === opportunity._id.toString()
+        const alreadyCompleted = volunteer.volunteerHistory && volunteer.volunteerHistory.some(
+            (entry)=>entry.opportunity && entry.opportunity.toString() === opportunity._id.toString()
         );
 
         if(alreadyCompleted){
@@ -438,9 +501,58 @@ exports.markAsCompleted = async (req, res)=>{
         });
         
         await volunteer.save();
-        res.status(200).json({message: 'Participation confirmed and history updated'});
+
+        // Send attendance confirmation email to volunteer
+        if (!volunteer) {
+            console.error('Volunteer not found for userId:', userId);
+        } else if (!volunteer.email) {
+            console.warn('Volunteer has no email address:', volunteer.name, volunteer._id);
+        } else {
+            try {
+                console.log('Sending attendance confirmation email to:', volunteer.email);
+                const emailText = `
+Hello ${volunteer.name},
+
+✅ Your attendance has been confirmed for the volunteer opportunity:
+
+📌 Title: ${opportunity.title}
+🏢 Organization: ${opportunity.organization.name}
+📅 Event Date: ${opportunity.startDate ? new Date(opportunity.startDate).toDateString() : 'N/A'}
+📍 Location: ${opportunity.location}
+
+Thank you for your participation! This opportunity has been added to your volunteer history.
+
+Your contribution makes a difference! 🌟
+
+Best regards,  
+${opportunity.organization.name}
+Volunteer Recommendation System Team
+                `;
+
+                await sendEmail(
+                    volunteer.email,
+                    `Attendance Confirmed: ${opportunity.title}`,
+                    emailText
+                );
+                console.log('Attendance confirmation email sent successfully to:', volunteer.email);
+            } catch (emailErr) {
+                console.error('Failed to send attendance confirmation email:', emailErr?.message || emailErr);
+                console.error('Email error details:', {
+                    volunteerEmail: volunteer.email,
+                    volunteerName: volunteer.name,
+                    opportunityTitle: opportunity.title,
+                    error: emailErr
+                });
+                // Don't fail the request if email fails
+            }
+        }
+        
+        res.status(200).json({
+            message: 'Attendance confirmed, history updated, and volunteer notified by email',
+            emailSent: volunteer && volunteer.email ? true : false
+        });
     } catch(err){
-        res.status(500).json({message: 'Seever error', error: err.message});
+        res.status(500).json({message: 'Server error', error: err.message});
     }
 };
 

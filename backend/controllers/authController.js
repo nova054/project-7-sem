@@ -9,6 +9,11 @@ exports.registerUser = async (req, res) => {
     const role = inputRole || 'volunteer';
 
     try {
+        // Prevent admin role creation via registration
+        if (role === 'admin') {
+            return res.status(400).json({ message: 'Cannot create admin accounts via registration' });
+        }
+
         let user = await User.findOne({ email });
         if (user) return res.status(400).json({ message: 'User already exists' });
 

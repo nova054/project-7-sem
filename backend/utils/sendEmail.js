@@ -5,7 +5,7 @@ const sendEmail = async (to, subject, text) => {
   const port = Number(process.env.EMAIL_PORT || 587);
   const user = process.env.EMAIL_USER;
   const pass = process.env.EMAIL_PASS;
-  const service = process.env.EMAIL_SERVICE; // optional, e.g., 'gmail'
+  const service = process.env.EMAIL_SERVICE;
 
   const transporter = nodemailer.createTransport(
     service
@@ -16,7 +16,7 @@ const sendEmail = async (to, subject, text) => {
       : {
           host,
           port,
-          secure: port === 465, // true for 465, false for others
+          secure: port === 465, 
           auth: { user, pass },
         }
   );

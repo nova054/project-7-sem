@@ -19,7 +19,7 @@ const userSchema = new mongoose.Schema(
     },
     role:{
         type: String,
-        enum: ['volunteer', 'organization'],
+        enum: ['volunteer', 'organization', 'admin'],
         default: 'volunteer',
     },
     // Optional profile fields

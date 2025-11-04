@@ -12,6 +12,7 @@ const {
     updateOpportunity,
     deleteOpportunity,
     approveApplicant,
+    rejectApplicant,
     markAsCompleted,
     getRecommendedOpportunities,
     getUserDashboard,
@@ -37,6 +38,7 @@ router.put('/:id', protect, updateOpportunity);
 router.delete('/:id', protect, deleteOpportunity);
 
 router.post('/:id/approve-applicant', protect, approveApplicant);
+router.post('/:id/reject-applicant', protect, rejectApplicant);
 router.post('/:id/mark-completed', protect, markAsCompleted);
 
 router.get('/recommendations', protect, getRecommendedOpportunities);
