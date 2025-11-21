@@ -15,7 +15,7 @@ const UserFormModal = ({ onClose, onSubmit, title, initialData = null }) => {
       setFormData({
         name: initialData.name || '',
         email: initialData.email || '',
-        password: '', // Don't pre-fill password
+        password: '', 
         role: initialData.role || 'volunteer'
       });
     }
@@ -35,7 +35,6 @@ const UserFormModal = ({ onClose, onSubmit, title, initialData = null }) => {
     setError('');
 
     try {
-      // Remove password from data if it's empty (for edit mode)
       const submitData = { ...formData };
       if (!submitData.password) {
         delete submitData.password;

@@ -12,7 +12,7 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
     password: '',
     confirmPassword: '',
     role: 'volunteer',
-    tags: '', // comma-separated string for UI
+    tags: '', 
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -24,7 +24,6 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -98,7 +97,6 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
       }}
     >
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
-        {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-2xl font-bold text-gray-900">
             {isLogin ? 'Welcome Back' : 'Join VolunteerMe'}

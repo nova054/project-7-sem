@@ -21,8 +21,8 @@ app.use(cors());
 
 // Serve static files from the React app (works both before/after monorepo split)
 const distCandidates = [
-  path.join(__dirname, 'frontend/dist'),           // current structure
-  path.join(__dirname, '../frontend/dist')         // after moving server.js to backend/
+  path.join(__dirname, 'frontend/dist'),          
+  path.join(__dirname, '../frontend/dist')         
 ];
 const distPath = distCandidates.find(p => fs.existsSync(p)) || distCandidates[0];
 app.use(express.static(distPath));
@@ -39,7 +39,6 @@ app.use('/api/contact', contactRoutes);
 
 app.use('/api/admin', adminRoutes);
 
-// Serve React app for non-API, non-static routes
 app.use((req, res, next) => {
   if (
     req.method === 'GET' &&
